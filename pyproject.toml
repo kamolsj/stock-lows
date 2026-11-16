@@ -12,3 +12,4 @@ packages = ["stocklows"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning:exchange_calendars", "ignore:.*returning an ndarray that drops timezone.*"]
