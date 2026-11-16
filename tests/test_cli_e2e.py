@@ -83,3 +83,37 @@ def test_intraday_when_closed_keeps_lists(tmp_path):
     st = json.loads((out / "status.json").read_text())
     assert st["markets"] == {"XNYS": False, "XTSE": False}
     assert not (out / "lows-1Y.json").exists()
+
+
+def test_intraday_refuses_stale_stats(tmp_path):
+    state, out = tmp_path / "state", tmp_path / "out"
+    cli.run_universe(state, us_fetch=lambda: US, tsx_fetch=lambda: TSX, info_fetcher=fake_info)
+    cli.run_nightly(state, out, date(2026, 11, 11), downloader=fake_download)   # nightly last ran Wed
+    cli.run_intraday(state, out, NOW, downloader=fake_download)                 # Monday: Thu+Fri missed
+    st = json.loads((out / "status.json").read_text())
+    assert st["ok"] is False and "history" in st["message"]
+    assert not (out / "lows-1Y.json").exists()
+
+
+def test_nightly_drops_stock_whose_history_did_not_update(tmp_path):
+    state, out = tmp_path / "state", tmp_path / "out"
+
+    def lagging(symbols, start=None, period=None):
+        got = fake_download(symbols, start=start, period=period)
+        if "FAR" in got and period == "max":
+            got["FAR"] = got["FAR"][got["FAR"].index < "2026-11-12"]
+        return got
+
+    cli.run_universe(state, us_fetch=lambda: US, tsx_fetch=lambda: TSX, info_fetcher=fake_info)
+    cli.run_nightly(state, out, MON, downloader=lagging)
+    stats = json.loads((state / "stats.json").read_text())["stats"]
+    assert "FAR" not in stats and "NEWL" in stats
+
+
+def test_universe_refuses_big_shrink(tmp_path):
+    state = tmp_path / "state"
+    cli.run_universe(state, us_fetch=lambda: US, tsx_fetch=lambda: TSX, info_fetcher=fake_info)
+    import pytest
+    with pytest.raises(RuntimeError, match="shrank"):
+        cli.run_universe(state, us_fetch=lambda: US[:5], tsx_fetch=lambda: TSX, info_fetcher=fake_info)
+    assert len(json.loads((state / "universe_raw.json").read_text())) == 9

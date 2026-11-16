@@ -127,6 +127,22 @@ for (const [label, dev] of [["iphone13", devices["iPhone 13"]], ["pixel7", devic
   await page.screenshot({ path: join(OUT, "iphone13-stale.png") });
   await ctx.close();
 }
+// workflow stopped entirely: last status says "markets closed" (Fri evening), viewed Mon 11:00 ET
+{
+  const ctx = await browser.newContext({ ...devices["iPhone 13"] });
+  const page = await ctx.newPage();
+  await page.clock.setFixedTime(new Date("2026-11-16T16:00:00Z"));
+  await routeSite(page, { as_of: "2026-11-13T22:45:00Z", last_success: "2026-11-13T22:45:00Z",
+    markets: { XNYS: false, XTSE: false }, ok: true, message: "" });
+  await page.goto("http://site.local/index.html");
+  await page.waitForSelector("#banner:not([hidden])");
+  check((await page.textContent("#banner")).includes("stale"), "stale banner when updates stopped during market hours");
+  if (!REAL) {
+    await page.selectOption("#f-cap", { label: "≥ $1B" });
+    check((await page.$eval("#f-cap", (e) => e.selectedIndex)) === 1, "market-cap chip keeps showing the chosen value");
+  }
+  await ctx.close();
+}
 await browser.close();
 console.log(failures ? `${failures} FAILED` : "ALL PASSED");
 process.exit(failures ? 1 : 0);

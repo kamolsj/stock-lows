@@ -70,14 +70,20 @@ jobs:
 
       - name: Weekly - rebuild stock list
         if: steps.mode.outputs.mode == 'weekly' || hashFiles('state/universe_raw.json') == ''
+        # A throttled rebuild refuses to shrink the list; carry on with last week's list.
+        continue-on-error: ${{ hashFiles('state/universe_raw.json') != '' }}
         run: python -m stocklows --state state --out pages/data universe
 
-      - name: Nightly - history, stats, charts, fundamentals
+      - name: Nightly - history, stats, charts
         id: nightly
         if: steps.mode.outputs.mode != 'intraday' || hashFiles('state/stats.json') == ''
-        run: |
-          python -m stocklows --state state --out pages/data nightly
-          python -m stocklows --state state --out pages/data fundamentals
+        run: python -m stocklows --state state --out pages/data nightly
+
+      - name: Fundamentals (quality scores)
+        id: fundamentals
+        if: steps.nightly.outcome == 'success'
+        continue-on-error: true
+        run: python -m stocklows --state state --out pages/data fundamentals
 
       - name: Save scanner state
         if: steps.nightly.outcome == 'success'
@@ -101,7 +107,7 @@ jobs:
           git push -q --force "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:gh-pages
 
       - name: Keep the schedule alive (GitHub pauses schedules after 60 idle days)
-        if: steps.mode.outputs.mode == 'nightly'
+        if: always() && steps.mode.outputs.mode == 'nightly'
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/scan.yml/enable"

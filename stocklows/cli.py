@@ -20,7 +20,7 @@ from .config import DETAIL_WITHIN_PCT, MIN_MCAP, PERIODS
 from .fundamentals import kpis
 from .history import HistoryStore
 from .lows import PeriodStat, period_stats
-from .marketcal import is_open, session_date
+from .marketcal import exchange_for_symbol, is_open, previous_session, session_date
 from .publish import build_lists, sanity_check, select_today, write_json, write_status
 from .universe import apply_liquidity, build_universe, load_universe, save_universe
 
@@ -28,6 +28,7 @@ log = logging.getLogger("stocklows")
 ET = ZoneInfo("America/New_York")
 EXCHANGES = ("XNYS", "XTSE")
 FUND_MAX_AGE = timedelta(days=7)
+MAX_UNIVERSE_SHRINK = 0.20
 DAILY_POINTS = 400
 
 
@@ -45,6 +46,13 @@ def run_universe(state: Path, us_fetch=yahoo.fetch_us_listings, tsx_fetch=yahoo.
     stocks = [s for s in stocks if s.market_cap is not None and s.market_cap >= MIN_MCAP]
     if not stocks:
         raise RuntimeError("universe build produced no stocks")
+    prev_path = Path(state) / "universe_raw.json"
+    if prev_path.exists():   # a throttled build silently drops stocks: keep last week's list instead
+        before = pd.Series([s.exchange for s in load_universe(prev_path)]).value_counts()
+        after = pd.Series([s.exchange for s in stocks]).value_counts()
+        for ex, n in before.items():
+            if after.get(ex, 0) < n * (1 - MAX_UNIVERSE_SHRINK):
+                raise RuntimeError(f"universe shrank for {ex}: {n} -> {after.get(ex, 0)}; keeping previous list")
     save_universe(stocks, Path(state) / "universe_raw.json")
     by_ex = pd.Series([s.exchange for s in stocks]).value_counts().to_dict()
     log.info("universe (pre-liquidity): %d stocks %s", len(stocks), by_ex)
@@ -81,8 +89,16 @@ def run_nightly(state: Path, out: Path, today: date, downloader=yahoo.download_d
     detail_set: list[str] = []
     detail_dir = out / "detail"
     detail_dir.mkdir(parents=True, exist_ok=True)
+    latest: dict[str, pd.Timestamp] = {}
+    for s in universe:
+        ex = exchange_for_symbol(s.symbol)
+        latest[ex] = max(latest.get(ex, hist[s.symbol].index.max()), hist[s.symbol].index.max())
+    lagging = 0
     for s in universe:
         h = hist[s.symbol]
+        if h.index.max() < latest[exchange_for_symbol(s.symbol)]:
+            lagging += 1   # its update failed; old windows would miss recent lows
+            continue
         anchor = h.index.max().date() + timedelta(days=1)   # windows end at the last close
         st = period_stats(h, anchor)
         if not st:
@@ -99,8 +115,8 @@ def run_nightly(state: Path, out: Path, today: date, downloader=yahoo.download_d
             f.unlink()
     write_json(state / "stats.json", {"built": today.isoformat(), "stats": stats_out})
     write_json(state / "detail_set.json", detail_set)
-    log.info("nightly: %d liquid stocks, %d with stats, %d detail files",
-             len(universe), len(stats_out), len(detail_set))
+    log.info("nightly: %d liquid stocks, %d with stats, %d detail files, %d skipped (history not updated)",
+             len(universe), len(stats_out), len(detail_set), lagging)
     return len(stats_out)
 
 
@@ -155,7 +171,16 @@ def run_intraday(state: Path, out: Path, now: datetime, downloader=yahoo.downloa
         return True
 
     universe = load_universe(state / "universe.json")
-    raw_stats = _read(state / "stats.json", {}).get("stats", {})
+    stats_doc = _read(state / "stats.json", {})
+    built = date.fromisoformat(stats_doc["built"]) if stats_doc.get("built") else None
+    stale = [ex for ex, sess in sessions.items()
+             if sess is not None and (built is None or built < previous_session(ex, sess))]
+    if stale:
+        write_status(out, now, markets, ok=False,
+                     message=f"history update failed (last built {built}); lists not refreshed")
+        log.error("stats.json built %s is older than the previous session for %s", built, stale)
+        return False
+    raw_stats = stats_doc.get("stats", {})
     stats = {sym: {p: PeriodStat.from_dict(v) for p, v in per.items()} for sym, per in raw_stats.items()}
     fundamentals = _read(state / "fundamentals.json", {})
 
@@ -164,7 +189,7 @@ def run_intraday(state: Path, out: Path, now: datetime, downloader=yahoo.downloa
     except Exception as e:
         write_status(out, now, markets, ok=False, message=f"price download failed: {e}")
         return False
-    quotes, expected = select_today(bars, universe, sessions)
+    quotes, expected = select_today(bars, universe, sessions, stats_built=built)
     lists = {p: build_lists(p, universe, stats, quotes, fundamentals) for p in PERIODS}
     errs = sanity_check(quotes, expected, lists)
     if errs:

@@ -34,5 +34,9 @@ def session_date(exchange: str, at: datetime) -> date | None:
     return local_day if ts >= cal.session_open(label) else None
 
 
+def previous_session(exchange: str, d: date) -> date:
+    return _cal(exchange).previous_session(pd.Timestamp(d)).date()
+
+
 def exchange_for_symbol(symbol: str) -> str:
     return "XTSE" if symbol.endswith(".TO") else "XNYS"

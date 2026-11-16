@@ -76,3 +76,27 @@ def test_roundtrip_save_load(tmp_path):
     assert set(loaded) == {"AAA", "BBB.TO"}
     assert list(loaded["AAA"].columns) == ["Low", "Close", "Volume"]
     assert loaded["BBB.TO"].iloc[0]["Close"] == 5.0
+
+
+def test_late_split_on_overlap_row_triggers_full_redownload(tmp_path):
+    dl = FakeDownloader([
+        {"AAA": bars(["2026-11-12", "2026-11-13"], 100.0)},
+        {"AAA": bars(["2026-11-13", "2026-11-16"], 50.0)},   # overlap row re-adjusted, no split flag
+        {"AAA": bars(["2026-11-12", "2026-11-13", "2026-11-16"], 50.0)},
+    ])
+    store = HistoryStore(tmp_path)
+    store.update(["AAA"], date(2026, 11, 13), downloader=dl)
+    out = store.update(["AAA"], date(2026, 11, 16), downloader=dl)
+    assert dl.calls[2]["period"] == "max"
+    assert (out["AAA"]["Low"] == 50.0).all()
+
+
+def test_normal_move_on_overlap_row_is_not_a_split(tmp_path):
+    dl = FakeDownloader([
+        {"AAA": bars(["2026-11-13"], 100.0)},
+        {"AAA": bars(["2026-11-13", "2026-11-16"], 104.0)},
+    ])
+    store = HistoryStore(tmp_path)
+    store.update(["AAA"], date(2026, 11, 13), downloader=dl)
+    store.update(["AAA"], date(2026, 11, 16), downloader=dl)
+    assert len(dl.calls) == 2

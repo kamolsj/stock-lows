@@ -25,11 +25,14 @@ Quote = dict  # {"date": date, "low": float, "price": float}
 
 
 def select_today(bars: dict[str, pd.DataFrame], universe: list[Stock],
-                 sessions: dict[str, date | None]) -> tuple[dict[str, Quote], int]:
+                 sessions: dict[str, date | None],
+                 stats_built: date | None = None) -> tuple[dict[str, Quote], int]:
     """Quotes whose last bar is today's session for that stock's exchange.
 
     Returns (quotes, expected) where expected counts stocks whose exchange has a session today.
     Stocks on an exchange with no session (pre-open, holiday) are skipped silently.
+    Stocks that split after ``stats_built`` are skipped: their stored lows are pre-split prices
+    until tonight's history refresh, so comparing would create fake (or hide real) lows.
     """
     quotes: dict[str, Quote] = {}
     expected = 0
@@ -41,6 +44,10 @@ def select_today(bars: dict[str, pd.DataFrame], universe: list[Stock],
         df = bars.get(s.symbol)
         if df is None or df.empty:
             continue
+        if stats_built is not None and "Splits" in df:
+            recent = df[df.index > pd.Timestamp(stats_built)]
+            if (recent["Splits"].fillna(0) != 0).any():
+                continue
         last = df.iloc[-1]
         if df.index[-1].date() != sess or pd.isna(last["Low"]) or pd.isna(last["Close"]):
             continue

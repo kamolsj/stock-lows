@@ -99,3 +99,20 @@ def test_failed_scan_keeps_previous_lists(tmp_path):
     st = json.loads((tmp_path / "status.json").read_text())
     assert st["ok"] is False and st["last_success"] == t1.isoformat() and st["as_of"] == t2.isoformat()
     assert json.loads((tmp_path / "lows-1Y.json").read_text()) == {"keep": True}
+
+
+def test_split_today_skipped_until_history_refreshed():
+    uni = [stock("SPLT"), stock("OK")]
+    split_bar = bar(MON, 25.0, 26.0)
+    split_bar["Splits"] = 2.0
+    bars = {"SPLT": split_bar, "OK": bar(MON, 60, 61)}
+    quotes, expected = select_today(bars, uni, {"XNYS": MON, "XTSE": MON}, stats_built=date(2026, 11, 13))
+    assert set(quotes) == {"OK"}
+
+
+def test_split_before_stats_built_is_fine():
+    uni = [stock("SPLT")]
+    df = pd.concat([bar(date(2026, 11, 12), 30, 31), bar(MON, 25.0, 26.0)])
+    df.loc[pd.Timestamp("2026-11-12"), "Splits"] = 2.0
+    quotes, _ = select_today({"SPLT": df}, uni, {"XNYS": MON, "XTSE": MON}, stats_built=date(2026, 11, 13))
+    assert set(quotes) == {"SPLT"}

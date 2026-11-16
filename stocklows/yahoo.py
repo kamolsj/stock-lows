@@ -19,6 +19,7 @@ log = logging.getLogger(__name__)
 
 BATCH = 200
 RETRY_DELAYS = (2, 4, 8)
+RETRY_MISSING_DELAYS = (5, 15)   # throttled tickers come back empty; ask again for just those
 UA = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/120.0 Safari/537.36", "Accept": "application/json"}
 NASDAQ_SCREENER = "https://api.nasdaq.com/api/screener/stocks?tableonly=true&download=true&exchange={ex}"
@@ -67,7 +68,20 @@ def _normalise(df: pd.DataFrame) -> pd.DataFrame:
 
 def download_daily(symbols: list[str], start: date | None = None,
                    period: str | None = None) -> dict[str, pd.DataFrame]:
-    """Split-adjusted (not dividend-adjusted) daily bars. Missing symbols are omitted."""
+    """Split-adjusted (not dividend-adjusted) daily bars. Missing symbols are re-requested,
+    then omitted if still missing."""
+    out = _download_once(symbols, start, period)
+    for delay in RETRY_MISSING_DELAYS:
+        missing = [s for s in symbols if s not in out]
+        if not missing:
+            break
+        log.info("retrying %d missing symbols after %ss", len(missing), delay)
+        time.sleep(delay)
+        out.update(_download_once(missing, start, period))
+    return out
+
+
+def _download_once(symbols: list[str], start: date | None, period: str | None) -> dict[str, pd.DataFrame]:
     import yfinance as yf
 
     out: dict[str, pd.DataFrame] = {}

@@ -91,6 +91,16 @@
     return out.slice().sort(by);
   }
 
+  // Regular trading hours in New York (holidays aside): computed in the browser so a stopped
+  // updater can't hide behind its own last "markets closed" status.
+  function marketHoursNow() {
+    const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/New_York", weekday: "short", hour: "numeric", minute: "numeric", hourCycle: "h23",
+    }).formatToParts(new Date()).map((p) => [p.type, p.value]));
+    const mins = Number(parts.hour) * 60 + Number(parts.minute);
+    return !["Sat", "Sun"].includes(parts.weekday) && mins >= 9 * 60 + 45 && mins <= 16 * 60 + 15;
+  }
+
   // ---------- rendering
   function renderStatus() {
     const st = state.status;
@@ -109,7 +119,9 @@
     }
     const anyOpen = st.markets && (st.markets.XNYS || st.markets.XTSE);
     const ageMin = st.last_success ? (Date.now() - Date.parse(st.last_success)) / 60000 : Infinity;
-    if (!st.ok || (anyOpen && ageMin > STALE_MIN)) {
+    const statusAgeMin = st.as_of ? (Date.now() - Date.parse(st.as_of)) / 60000 : Infinity;
+    const updaterStopped = marketHoursNow() && statusAgeMin > STALE_MIN;
+    if (!st.ok || (anyOpen && ageMin > STALE_MIN) || updaterStopped) {
       banner.hidden = false;
       banner.textContent = st.last_success
         ? `Data is stale since ${fmtTimeET(st.last_success)} ET. The latest update didn't complete; showing the last good scan.`

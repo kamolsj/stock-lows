@@ -73,3 +73,9 @@ def test_period_high_and_start_close(stats):
 def test_pct_helpers():
     assert pct_from_low(51.55, 50.0) == pytest.approx(0.031)
     assert pct_off_high(75.0, 100.0) == pytest.approx(-0.25)
+
+
+def test_float32_tie_counts_as_new_low():
+    import numpy as np
+    st = period_stats(make_hist(extra={"2026-03-02": float(np.float32(12.33))}), TODAY)["1Y"]
+    assert classify(st, day_low=12.33, price=12.5) == "new_low"

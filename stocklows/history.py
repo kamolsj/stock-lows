@@ -13,6 +13,7 @@ from . import yahoo
 
 log = logging.getLogger(__name__)
 COLS = ["Low", "Close", "Volume"]
+READJUST_RATIO = 0.25   # overlap-day close moved >25% between downloads => history was re-adjusted
 Downloader = Callable[..., dict[str, pd.DataFrame]]
 
 
@@ -69,7 +70,11 @@ class HistoryStore:
             for sym, new in got.items():
                 last = data[sym].index.max()
                 newer = new[new.index > last]
-                if (newer.get("Splits", pd.Series(dtype=float)).fillna(0) != 0).any():
+                readjusted = False
+                if last in new.index:
+                    old_c, new_c = float(data[sym].loc[last, "Close"]), float(new.loc[last, "Close"])
+                    readjusted = old_c > 0 and abs(new_c / old_c - 1) > READJUST_RATIO
+                if readjusted or (newer.get("Splits", pd.Series(dtype=float)).fillna(0) != 0).any():
                     split_syms.append(sym)
                     continue
                 merged = pd.concat([data[sym], new[COLS]])

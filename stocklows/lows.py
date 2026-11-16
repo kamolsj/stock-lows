@@ -70,7 +70,8 @@ def period_stats(hist: pd.DataFrame, today: date) -> dict[str, PeriodStat]:
 
 
 def classify(stat: PeriodStat, day_low: float, price: float) -> Literal["new_low", "near_low"] | None:
-    if day_low <= stat.prior_low:
+    # Prices are stored as float32; compare at 4 dp so an exact cent tie counts as a new low.
+    if round(day_low, 4) <= round(stat.prior_low, 4):
         return "new_low"
     period_low = min(stat.prior_low, day_low)
     if price <= period_low * (1 + NEAR_PCT) + 1e-9:
