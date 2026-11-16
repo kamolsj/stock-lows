@@ -1,0 +1,127 @@
+[
+ {
+  "symbol": "IGBT.UN",
+  "name": "2028 Investment Grade Bond Trust",
+  "instrument_name": "2028 InvGrd Bnd F Un"
+ },
+ {
+  "symbol": "BTCQ",
+  "name": "3iQ Bitcoin ETF",
+  "instrument_name": "3iQ Bitcoin ETF Un"
+ },
+ {
+  "symbol": "BBD.B",
+  "name": "Bombardier Inc.",
+  "instrument_name": "Bombardier Cl B SV"
+ },
+ {
+  "symbol": "CNQ",
+  "name": "Canadian Natural Resources Limited",
+  "instrument_name": "Canadian Natural Res"
+ },
+ {
+  "symbol": "CJ.WT",
+  "name": "Cardinal Energy Ltd.",
+  "instrument_name": "Cardinal Energy Wts"
+ },
+ {
+  "symbol": "ENB",
+  "name": "Enbridge Inc.",
+  "instrument_name": "Enbridge Inc."
+ },
+ {
+  "symbol": "ENB.PR.A",
+  "name": "Enbridge Inc.",
+  "instrument_name": "Enbridge 5.50% Pr"
+ },
+ {
+  "symbol": "GGD.WT",
+  "name": "GoGold Resources Inc.",
+  "instrument_name": "GoGold Resou Inc Wts"
+ },
+ {
+  "symbol": "IAU.WT",
+  "name": "i-80 Gold Corp.",
+  "instrument_name": "i-80 Gold Corp WT"
+ },
+ {
+  "symbol": "IAU.WT.U",
+  "name": "i-80 Gold Corp.",
+  "instrument_name": "i-80 Gold Corp WT US"
+ },
+ {
+  "symbol": "MAK.WT.U",
+  "name": "MAK Acquisition Corp.",
+  "instrument_name": "MAK AcquisCor Warrat"
+ },
+ {
+  "symbol": "GASX.WT.A",
+  "name": "NG Energy International Corp.",
+  "instrument_name": "NG Energy Int Corp W"
+ },
+ {
+  "symbol": "RCI.B",
+  "name": "Rogers Communications Inc.",
+  "instrument_name": "Rogers Comm Cl B NV"
+ },
+ {
+  "symbol": "RY",
+  "name": "Royal Bank of Canada",
+  "instrument_name": "Royal Bank of Canada"
+ },
+ {
+  "symbol": "SLT.WT",
+  "name": "Saltire Capital Ltd.",
+  "instrument_name": "Saltire Cap Wts CAD"
+ },
+ {
+  "symbol": "SLT.WT.U",
+  "name": "Saltire Capital Ltd.",
+  "instrument_name": "Saltire Cap Wts USD"
+ },
+ {
+  "symbol": "SHOP",
+  "name": "Shopify Inc.",
+  "instrument_name": "Shopify Inc A SV"
+ },
+ {
+  "symbol": "AGMR.WT.B",
+  "name": "Silver Mountain Resources Inc.",
+  "instrument_name": "Silv Mntn Rsrc Inc W"
+ },
+ {
+  "symbol": "STCK.WT.A",
+  "name": "Stack Capital Group Inc.",
+  "instrument_name": "Stack Cap GrpInc Wts"
+ },
+ {
+  "symbol": "STCK.WT.B",
+  "name": "Stack Capital Group Inc.",
+  "instrument_name": "Stack Capital Gr WtB"
+ },
+ {
+  "symbol": "STCK.WT.C",
+  "name": "Stack Capital Group Inc.",
+  "instrument_name": "Stack Capital Gp Wts"
+ },
+ {
+  "symbol": "TSK.WT",
+  "name": "Talisker Resources Ltd.",
+  "instrument_name": "Talisker Res Ltd Wts"
+ },
+ {
+  "symbol": "TSK.WT.A",
+  "name": "Talisker Resources Ltd.",
+  "instrument_name": "Talisker Resources L"
+ },
+ {
+  "symbol": "TINY.WT",
+  "name": "Tiny Ltd.",
+  "instrument_name": "Tiny Ltd Wts"
+ },
+ {
+  "symbol": "TD",
+  "name": "Toronto-Dominion Bank (The)",
+  "instrument_name": "T.D. Bank"
+ }
+]

@@ -1,0 +1,14 @@
+[project]
+name = "stocklows"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = ["yfinance>=0.2.50", "pandas>=2.2", "pyarrow>=15", "exchange_calendars>=4.5", "requests>=2.31"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.setuptools]
+packages = ["stocklows"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
