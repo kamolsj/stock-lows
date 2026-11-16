@@ -1,0 +1,107 @@
+name: scan
+
+# One workflow, three schedules (times are UTC):
+#  - intraday: every 15 min, 13:00-21:45 UTC Mon-Fri (covers 9:30-16:00 ET in both EST and EDT;
+#              the scanner exits early when neither NYSE nor TSX is open)
+#  - nightly:  22:30 UTC Mon-Fri -> update history, stats, charts, fundamentals
+#  - weekly:   10:00 UTC Saturday -> rebuild the stock list, then nightly
+# The site and its data live on the gh-pages branch, kept to a single commit.
+on:
+  schedule:
+    - cron: "*/15 13-21 * * 1-5"
+    - cron: "30 22 * * 1-5"
+    - cron: "0 10 * * 6"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "What to run"
+        type: choice
+        options: [weekly, nightly, intraday]
+        default: weekly
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: scan
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Pick mode
+        id: mode
+        run: |
+          case "${{ github.event.schedule }}" in
+            "30 22 * * 1-5") m=nightly ;;
+            "0 10 * * 6")    m=weekly ;;
+            "")              m="${{ inputs.mode }}" ;;
+            *)               m=intraday ;;
+          esac
+          echo "mode=$m" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: pip install .
+
+      - name: Restore scanner state
+        uses: actions/cache/restore@v4
+        with:
+          path: state
+          key: state-${{ github.run_id }}
+          restore-keys: state-
+
+      - name: Check out gh-pages (site + data)
+        run: |
+          if git ls-remote --exit-code --heads origin gh-pages >/dev/null; then
+            git clone --depth 1 --branch gh-pages "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" pages
+          else
+            mkdir pages && git -C pages init -b gh-pages
+          fi
+
+      - name: Weekly - rebuild stock list
+        if: steps.mode.outputs.mode == 'weekly' || hashFiles('state/universe_raw.json') == ''
+        run: python -m stocklows --state state --out pages/data universe
+
+      - name: Nightly - history, stats, charts, fundamentals
+        id: nightly
+        if: steps.mode.outputs.mode != 'intraday' || hashFiles('state/stats.json') == ''
+        run: |
+          python -m stocklows --state state --out pages/data nightly
+          python -m stocklows --state state --out pages/data fundamentals
+
+      - name: Save scanner state
+        if: steps.nightly.outcome == 'success'
+        uses: actions/cache/save@v4
+        with:
+          path: state
+          key: state-${{ github.run_id }}
+
+      - name: Intraday - scan today's prices
+        run: python -m stocklows --state state --out pages/data intraday
+
+      - name: Publish to gh-pages
+        run: |
+          cp site/index.html site/app.js site/style.css site/manifest.webmanifest site/icon-*.png pages/
+          touch pages/.nojekyll
+          cd pages
+          git config user.name "stock-lows-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git rev-parse HEAD >/dev/null 2>&1; then git commit -q --amend -m "site data"; else git commit -q -m "site data"; fi
+          git push -q --force "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:gh-pages
+
+      - name: Keep the schedule alive (GitHub pauses schedules after 60 idle days)
+        if: steps.mode.outputs.mode == 'nightly'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/scan.yml/enable"
