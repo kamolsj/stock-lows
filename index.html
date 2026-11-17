@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Stock Lows</title>
+  <meta name="description" content="NYSE, NASDAQ and TSX stocks hitting 1, 5, 10 and 20-year lows today, with quality signals.">
+  <meta name="theme-color" content="#fcfcfb" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#141413" media="(prefers-color-scheme: dark)">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Stock Lows">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="top">
+    <div class="top-row">
+      <h1>Stock Lows</h1>
+      <button id="refresh" class="icon-btn" aria-label="Refresh data" title="Refresh">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 4a8 8 0 0 1 7.75 6h-2.1A6 6 0 1 0 18 14h2.07A8 8 0 1 1 12 4Zm5 0h4v4l-1.5-1.5L17 4Z"/></svg>
+      </button>
+    </div>
+    <p id="asof" class="asof" aria-live="polite">Loading…</p>
+  </header>
+
+  <div id="banner" class="banner" role="alert" hidden></div>
+
+  <main>
+    <div class="seg" role="tablist" aria-label="Time frame">
+      <button role="tab" data-period="1Y">1Y</button>
+      <button role="tab" data-period="5Y">5Y</button>
+      <button role="tab" data-period="10Y">10Y</button>
+      <button role="tab" data-period="20Y">20Y</button>
+    </div>
+
+    <div class="filters" aria-label="Filters">
+      <label class="chip select-chip">
+        <span class="sr">Exchange</span>
+        <select id="f-exchange">
+          <option value="all">All exchanges</option>
+          <option value="us">US only</option>
+          <option value="tsx">TSX only</option>
+        </select>
+      </label>
+      <button class="chip" aria-pressed="false" id="f-pe">P/E positive</button>
+      <button class="chip" aria-pressed="false" id="f-f7">F-Score ≥ 7</button>
+      <button class="chip" aria-pressed="false" id="f-z">Z-Score safe</button>
+      <label class="chip select-chip">
+        <span class="sr">Minimum market cap</span>
+        <select id="f-cap">
+          <option value="0">Any size</option>
+          <option value="1000000000">≥ $1B</option>
+          <option value="10000000000">≥ $10B</option>
+        </select>
+      </label>
+      <label class="chip select-chip">
+        <span class="sr">Sort by</span>
+        <select id="f-sort">
+          <option value="low">Sort: closest to low</option>
+          <option value="quality">Sort: quality</option>
+          <option value="cap">Sort: market cap</option>
+          <option value="high">Sort: % off high</option>
+        </select>
+      </label>
+    </div>
+
+    <section aria-labelledby="h-new">
+      <h2 id="h-new">Hit a new <span class="p-name">1-year</span> low today <span class="count" id="c-new"></span></h2>
+      <p class="hint">Today's lowest trade was the lowest price of the period, even if it has bounced since.</p>
+      <ul class="list" id="l-new"></ul>
+    </section>
+
+    <section aria-labelledby="h-near">
+      <h2 id="h-near">Near the <span class="p-name">1-year</span> low · within 5% <span class="count" id="c-near"></span></h2>
+      <ul class="list" id="l-near"></ul>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <p>Prices are delayed about 15 minutes. Data from Yahoo Finance, NASDAQ and TMX; updates roughly every 15 minutes while markets are open.</p>
+    <p>For research only — not investment advice. A few listed stocks may not be offered on Wealthsimple; confirm in the app.</p>
+  </footer>
+
+  <dialog id="sheet" class="sheet" aria-labelledby="s-title">
+    <div class="sheet-inner">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sheet-head">
+        <div>
+          <h3 id="s-title"></h3>
+          <p id="s-name" class="muted"></p>
+        </div>
+        <button class="icon-btn" id="s-close" aria-label="Close">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M6.4 5 12 10.6 17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6 10.6 12 5 6.4Z"/></svg>
+        </button>
+      </div>
+      <div id="s-body"></div>
+    </div>
+  </dialog>
+</body>
+</html>
